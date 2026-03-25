@@ -1,7 +1,7 @@
 # SAP O2C Graph-Based Data Modeling and Query System
 
-> **Live Demo:** [Add deployed URL here]
-> **GitHub:** [Add repo URL here]
+> **Live Demo:** [https://o2c-graph-query-system.vercel.app/]
+> **GitHub:** [https://github.com/DivyanshJain04/o2c-graph-query-system]
 > **Built with:** FastAPI · SQLite · Groq LLaMA 3.3 70B · React · Cytoscape.js
 
 A full-stack system that unifies fragmented SAP Order-to-Cash data into an interactive knowledge graph and allows users to explore entity relationships and query the data using natural language.
