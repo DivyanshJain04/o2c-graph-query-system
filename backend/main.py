@@ -22,7 +22,7 @@ DB_PATH = BASE_DIR / "database.db"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-MAX_NODES_PER_ENTITY = int(os.getenv("MAX_NODES_PER_ENTITY", "40"))
+MAX_NODES_PER_ENTITY = int(os.getenv("MAX_NODES_PER_ENTITY", "20"))
 SQL_TIMEOUT_SECONDS = float(os.getenv("SQL_TIMEOUT_SECONDS", "2.5"))
 SQL_MAX_ROWS = int(os.getenv("SQL_MAX_ROWS", "500"))
 
@@ -400,7 +400,16 @@ def validate_sql_against_schema(sql: str, schema: Dict[str, List[str]]) -> None:
     Lightweight validation to reduce risk from LLM-generated SQL:
     - Ensure referenced FROM/JOIN tables exist.
     - Ensure referenced alias.column pairs exist (best-effort; unqualified columns are not validated).
+    SQL aggregate/scalar functions (COUNT, SUM, MAX, etc.) are explicitly skipped.
     """
+    # SQL built-in function names that look like alias.column when regex matches COUNT(col)
+    _SQL_FUNCTIONS = {
+        "count", "sum", "avg", "min", "max", "coalesce", "nullif", "ifnull",
+        "length", "substr", "upper", "lower", "trim", "round", "cast",
+        "strftime", "date", "datetime", "julianday", "abs", "random",
+        "group_concat", "total", "typeof",
+    }
+
     cleaned = _strip_sql_comments(sql)
     one_liner = " ".join(cleaned.split())
 
@@ -433,10 +442,13 @@ def validate_sql_against_schema(sql: str, schema: Dict[str, List[str]]) -> None:
     for m in re.finditer(col_pat, one_liner):
         left = _normalize_identifier(m.group(1))
         right = _normalize_identifier(m.group(2))
+        # Skip SQL built-in function names — COUNT(col) parses as COUNT.col
+        if left.lower() in _SQL_FUNCTIONS:
+            continue
         table = alias_to_table.get(left)
         if not table:
-            # Unknown alias - likely a function schema or something unusual; be conservative.
-            raise ValueError(f"Unknown table alias in SQL: {left}")
+            # Unknown alias — skip rather than reject, to avoid over-blocking valid queries
+            continue
         cols = schema.get(table, [])
         if right not in cols and right != "*":
             raise ValueError(f'Unknown column "{right}" on table "{table}"')
@@ -522,8 +534,12 @@ def build_graph_cache() -> Dict[str, Any]:
     nodes = fetch_sample_nodes(conn)
     edges = fetch_edges(conn, nodes)
     conn.close()
-    node_map = {n["id"]: n for n in nodes}
-    return {"nodes": nodes, "edges": edges, "node_map": node_map}
+    # Only return nodes that appear in at least one edge — isolated nodes
+    # excluded from visualization but kept in node_map for direct lookup.
+    connected_ids = {e["source"] for e in edges} | {e["target"] for e in edges}
+    connected_nodes = [n for n in nodes if n["id"] in connected_ids]
+    node_map = {n["id"]: n for n in nodes}  # full map for lookup
+    return {"nodes": connected_nodes, "edges": edges, "node_map": node_map}
 
 
 def get_graph_cache() -> Dict[str, Any]:

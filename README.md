@@ -61,9 +61,8 @@ o2c-graph-query-system/
 │   ├── .env.example
 │   └── package.json
 ├── sessions/
-│   ├── cursor_graph_based_data_modeling_and_fa.md   # Initial build session
-│   ├── cursor_production_quality_sap_o2c_graph.md   # Production upgrade session
-│   └── cursor_system_upgrade_for_production_qu.md   # Final hardening session
+│   ├── cursor_graph_based_data_modeling_and_fa.md   # Initial build session (raw Cursor export)
+│   └── combined_session_log.md                      # Full iteration log: build → upgrade → hardening
 ├── .gitignore
 └── README.md
 ```
@@ -326,7 +325,7 @@ The backend logs every request with structured output:
 
 ## What I Would Improve With More Time
 
-- **Full date typing** — key numeric fields (amount, price, quantity) are typed as REAL/INTEGER at ingestion. ISO date strings like `creationDate` could be stored with DATE affinity for correct chronological filtering.
+- **Full date typing** — key numeric fields (amount, price, quantity) are typed as REAL/INTEGER at ingestion. ISO date strings like `creationDate` could be stored with DATE affinity for correct chronological filtering and date-range queries.
 - **Streaming responses** — chat waits for the full Groq response before rendering. Streaming tokens would feel significantly faster.
 - **Real graph database** — Neo4j would enable native path traversal queries ("find all broken O2C flows") without multi-JOIN SQL. SQLite is the right tradeoff for this dataset size and demo timeframe.
 - **Auth + multi-tenancy** — CORS is open and there is no auth. Production deployment for a real enterprise customer would need both.
